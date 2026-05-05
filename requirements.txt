@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-dotenv
+requests
+shapely
+pyproj
+pandas
+pydantic
