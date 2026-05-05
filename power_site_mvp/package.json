@@ -1,6 +1,9 @@
 {
+  "name": "power-site-scout-stable-bootstrap",
+  "private": true,
+  "version": "0.1.0",
   "scripts": {
-    "build": "bash scripts/bootstrap_stable.sh"
+    "build": "python3 scripts/bootstrap_stable.py"
   },
   "dependencies": {}
 }
