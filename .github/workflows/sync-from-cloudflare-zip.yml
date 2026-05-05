@@ -1,0 +1,71 @@
+name: Sync tunnel-tested stable app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download tunnel-tested source zip
+        run: |
+          set -euo pipefail
+          ZIP_URL="https://fairy-clarity-knitting-municipality.trycloudflare.com/static/powersite-vercel-sync.zip"
+          curl -fL --retry 5 --retry-delay 3 "$ZIP_URL" -o /tmp/powersite.zip
+          python - <<'PY'
+          import pathlib
+          import shutil
+          import zipfile
+
+          root = pathlib.Path('.').resolve()
+          zip_path = pathlib.Path('/tmp/powersite.zip')
+          with zipfile.ZipFile(zip_path) as zf:
+              forbidden = []
+              for name in zf.namelist():
+                  normalized = name.replace('\\', '/')
+                  parts = set(normalized.split('/'))
+                  if parts & {'.env', 'private_data', 'reports', 'backups', '.packages', '.local_run_packages', '__pycache__', '.vercel', 'node_modules'}:
+                      forbidden.append(name)
+                  if normalized.endswith(('.log', '.pid')):
+                      forbidden.append(name)
+              if forbidden:
+                  raise SystemExit('Forbidden files in zip: ' + ', '.join(forbidden[:20]))
+
+              target = root / 'power_site_mvp'
+              if target.exists():
+                  shutil.rmtree(target)
+              zf.extractall(root)
+
+          workflow = root / '.github' / 'workflows' / 'sync-from-cloudflare-zip.yml'
+          if workflow.exists():
+              workflow.unlink()
+          PY
+
+      - name: Verify stable app
+        run: |
+          set -euo pipefail
+          python -m compileall power_site_mvp/app
+          cd power_site_mvp
+          node scripts/build-check.mjs
+
+      - name: Commit synced source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add power_site_mvp .github/workflows/sync-from-cloudflare-zip.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: sync tunnel-tested app for vercel"
+          git push
