@@ -11,18 +11,6 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 APP_DIR = ROOT_DIR / "power_site_mvp"
 DEFAULT_PUBLIC_ORIGIN = "https://power-site-scout-stable.vercel.app"
 
-# Keep VWorld/Kakao domain-sensitive calls on the single production origin even
-# when Vercel exposes preview/branch/project URLs. These are public origins, not
-# secrets; API keys still come only from Vercel environment variables.
-os.environ.setdefault("APP_PUBLIC_URL", DEFAULT_PUBLIC_ORIGIN)
-os.environ.setdefault("VWORLD_DOMAIN", DEFAULT_PUBLIC_ORIGIN)
-
-for path in (ROOT_DIR, APP_DIR):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
-
-from power_site_mvp.app.main import app as fastapi_app
-
 
 def _with_https_scheme(value: str) -> str:
     value = (value or "").strip().rstrip("/")
@@ -41,9 +29,34 @@ def _origin_url(value: str) -> str:
     return normalized.rstrip("/")
 
 
+def _hostname(value: str) -> str:
+    return (urlparse(_with_https_scheme(value)).hostname or "").lower()
+
+
 def _is_local_origin(origin: str) -> bool:
-    host = (urlparse(_with_https_scheme(origin)).hostname or "").lower()
-    return host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+    return _hostname(origin) in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
+
+# On Vercel, keep every domain-sensitive provider call pinned to one registered
+# production origin. Stale values such as localhost, trycloudflare, preview URLs,
+# or the old MVP project URL are intentionally ignored here. API keys still come
+# only from Vercel environment variables.
+for key in ("APP_PUBLIC_URL", "VWORLD_DOMAIN"):
+    value = os.getenv(key, "").strip()
+    host = _hostname(value)
+    if (
+        not value
+        or _is_local_origin(value)
+        or host.endswith("trycloudflare.com")
+        or host.endswith("vercel.app")
+    ):
+        os.environ[key] = DEFAULT_PUBLIC_ORIGIN
+
+for path in (ROOT_DIR, APP_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+
+from power_site_mvp.app.main import app as fastapi_app
 
 
 def _canonical_origin() -> str:
