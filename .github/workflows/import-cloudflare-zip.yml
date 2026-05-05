@@ -10,9 +10,17 @@ permissions:
 
 jobs:
   import-stable-package:
-    if: ${{ !contains(github.event.head_commit.message, 'chore: import stable app snapshot') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Skip imported snapshot commits
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ "$HEAD_COMMIT_MESSAGE" == *"chore: import stable app snapshot"* ]]; then
+            echo "Snapshot commit detected; no import needed."
+            exit 0
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
