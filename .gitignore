@@ -1,0 +1,24 @@
+# Local secrets and generated files
+.env
+.env.*
+!.env.example
+reports/
+private_data/
+backups/
+.vercel/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.pid
+.runtime_packages/
+.local_run_packages/
+.packages/
+power_site_mvp/.local_run_packages/
+power_site_mvp/.packages/
+power_site_mvp/reports/
+power_site_mvp/private_data/
+power_site_mvp/backups/
+power_site_mvp/*.log
+power_site_mvp/*.pid
