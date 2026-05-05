@@ -1,0 +1,49 @@
+name: Import tunnel-tested stable build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/import-stable.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import-stable:
+    runs-on: ubuntu-latest
+    env:
+      STABLE_ZIP_URL: https://dat-ringtones-heath-shipments.trycloudflare.com/static/power_site_scout_stable_vercel_ready.zip
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download stable package
+        run: |
+          curl -fL "$STABLE_ZIP_URL" -o /tmp/powersite-stable.zip
+          test -s /tmp/powersite-stable.zip
+
+      - name: Unpack stable package
+        run: |
+          rm -rf /tmp/powersite-stable
+          mkdir -p /tmp/powersite-stable
+          unzip -q /tmp/powersite-stable.zip -d /tmp/powersite-stable
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            /tmp/powersite-stable/ ./
+          rm -f power_site_mvp/static/power_site_scout_stable_vercel_ready.zip
+
+      - name: Commit imported files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: import tunnel-tested stable build"
+            git push
+          fi
