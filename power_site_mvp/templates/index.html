@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PowerSite Scout OS</title>
+    <link rel="stylesheet" href="/static/style.css?v={{ app_version }}" />
+    <script>
+      window.APP_CONFIG = {
+        keyStatus: {{ key_status | tojson }},
+        vworldDomain: {{ vworld_domain | tojson }},
+        serviceIds: {{ service_ids | tojson }},
+        debugVworld: {{ debug_vworld | tojson }},
+        disclaimer: {{ disclaimer | tojson }}
+      };
+    </script>
+    {% if kakao_js_key %}
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_js_key }}&libraries=services"></script>
+    {% endif %}
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>PowerSite Scout OS</h1>
+        <p class="app-subtitle">전력입지 선점 대시보드</p>
+      </div>
+      <div class="status-strip" aria-label="API 키 상태">
+        <span class="status-chip {% if key_status.kakao_rest %}ok{% else %}warn{% endif %}">Kakao REST</span>
+        <span class="status-chip {% if key_status.kakao_js %}ok{% else %}warn{% endif %}">Kakao JS</span>
+        <span class="status-chip {% if key_status.vworld %}ok{% else %}warn{% endif %}">VWorld</span>
+        {% if auth_enabled %}
+        <a class="logout-link" href="/logout">로그아웃</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="control-panel" aria-label="분석 입력">
+        <form id="searchForm" class="search-form">
+          <label for="addressInput">주소</label>
+          <div class="search-row">
+            <input id="addressInput" name="address" type="text" autocomplete="street-address" placeholder="예: 경기도 여주시..." required />
+            <button type="submit" class="primary-button">분석 시작</button>
+          </div>
+          <label class="check-row">
+            <input id="privacyToggle" type="checkbox" checked />
+            <span>리포트 주소·지번 비공개</span>
+          </label>
+        </form>
+
+        <div class="map-tools" aria-label="지도 도구">
+          <div class="segmented" role="group" aria-label="지도 전환">
+            <button type="button" data-map-type="ROADMAP">일반</button>
+            <button type="button" data-map-type="SKYVIEW">스카이뷰</button>
+            <button type="button" data-map-type="HYBRID" class="active">하이브리드</button>
+          </div>
+          <div class="tower-tools">
+            <button type="button" id="towerModeButton">송전탑 마킹</button>
+            <button type="button" id="roadModeButton">가상도로 마킹</button>
+            <div class="field-block voltage-field">
+              <span class="field-label">&#49569;&#51204;&#52629; &#51204;&#50517;</span>
+              <select id="powerVoltage">
+                <option value="unknown">&#48120;&#54869;&#51064;</option>
+                <option value="345kv">345kV</option>
+                <option value="154kv">154kV</option>
+              </select>
+            </div>
+            <label class="inline-select manual-road-width-field">
+              가상도로 폭
+              <select id="manualRoadWidth">
+                <option value="unknown">미확인/없음</option>
+                <option value="10m">10m</option>
+                <option value="6m">6m</option>
+                <option value="4m">4m</option>
+              </select>
+            </label>
+            <div id="mobileMapSlot" class="mobile-map-slot" aria-hidden="true"></div>
+            <button type="button" id="manualParcelModeButton">필지 수동추가</button>
+            <button type="button" id="removeManualParcelButton">수동필지 삭제</button>
+            <button type="button" id="undoTowerButton">송전탑 삭제</button>
+            <button type="button" id="clearRoadButton">도로마킹 삭제</button>
+          </div>
+          <p id="towerSummary" class="tool-summary">송전탑 후보 0개</p>
+          <p id="manualRoadSummary" class="tool-summary">가상도로 후보 0점</p>
+        </div>
+
+        <div class="manual-grid compact scoring-controls" aria-label="수동 보정">
+          <div class="road-override-group" aria-label="도로 수동보정">
+            <span class="field-label">접도조건 빠른선택</span>
+            <div class="road-override-options">
+              <label class="check-row inline road-width-row">
+                <input id="actualRoad10m" type="checkbox" />
+                <span>10m</span>
+              </label>
+              <label class="check-row inline road-width-row">
+                <input id="actualRoad6m" type="checkbox" />
+                <span>6m</span>
+              </label>
+              <label class="check-row inline road-width-row">
+                <input id="actualRoad4m" type="checkbox" />
+                <span>4m</span>
+              </label>
+              <label class="check-row inline construction-check">
+                <input id="constructionAccessDifficult" type="checkbox" />
+                <span>협소진입로</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="manual-risk-panel slope-manual-panel">
+          <div class="field-label">경사도 수동선택</div>
+          <div class="manual-grid compact">
+            <label>
+              경사도 적용값
+              <select id="manualSlopeBand">
+                <option value="unknown">미확인</option>
+                <option value="low">낮음 / 0~15도</option>
+                <option value="medium">중간 / 15~20도</option>
+                <option value="high">높음 / 20~25도</option>
+                <option value="worst">최악 / 25도 초과</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <details class="notice-details">
+          <summary>수동 확인 필요 항목</summary>
+          <div id="noticePanel" class="notice-panel"></div>
+        </details>
+      </section>
+
+      <section class="map-panel" aria-label="지도">
+        <div id="map"></div>
+        <div id="mapFallback" class="map-fallback" hidden></div>
+      </section>
+
+      <section class="result-panel" aria-label="분석 결과">
+        <div id="emptyState" class="empty-state">
+          주소를 입력하면 주소 필지와 붙어 이어지는 필지 최대 10개, 용도지역, 도로, 500m 민가밀집, 정책입지와 전력자립도를 자동 분석합니다.
+        </div>
+        <div id="resultContent" hidden>
+          <section class="result-summary-card" aria-label="분석 결과 요약">
+            <div class="result-card-title">
+              <h2>분석 결과 요약</h2>
+              <span id="resultStatus" class="result-status-pill">대기</span>
+            </div>
+            <div class="score-band">
+              <div class="summary-kpi summary-kpi-score">
+                <span class="score-label">종합 점수</span>
+                <strong id="totalScore">-</strong>
+                <small>100점 만점</small>
+              </div>
+              <div class="summary-kpi">
+                <span class="score-label">등급</span>
+                <strong id="grade">-</strong>
+                <small>등급 기준</small>
+              </div>
+              <div class="summary-kpi">
+                <span class="score-label">판정</span>
+                <strong id="resultDecision">분석 전</strong>
+                <small>내부 판정</small>
+              </div>
+            </div>
+            <div class="result-meta-strip">
+              <div class="area-metric">
+                <span>기준 주소 면적</span>
+                <strong id="resultMainArea">-</strong>
+              </div>
+              <div class="area-metric">
+                <span>추가 취합 면적</span>
+                <strong id="resultAdditionalArea">0㎡ / 0평</strong>
+              </div>
+              <div class="area-metric area-metric-total">
+                <span>최종 합산 면적</span>
+                <strong id="resultTotalArea">-</strong>
+              </div>
+              <p id="resultNarrative">주소 분석 후 후보지 핵심 판단을 요약합니다.</p>
+            </div>
+          </section>
+
+          <section class="triage-grid" aria-label="핵심 판단">
+            <div class="triage-card triage-good">
+              <h2>강점</h2>
+              <ul id="strengthList" class="clean-list"></ul>
+            </div>
+            <div class="triage-card triage-risk">
+              <h2>수동 확인 필요 항목</h2>
+              <ul id="weaknessList" class="clean-list"></ul>
+            </div>
+            <div class="triage-card triage-next">
+              <h2>다음 액션</h2>
+              <ul id="nextCheckList" class="clean-list"></ul>
+            </div>
+          </section>
+
+          <section class="result-block result-score-block">
+            <h2>세부 평가 점수</h2>
+            <div id="scoreTable" class="score-table"></div>
+          </section>
+
+          <section id="overlayRegulationBlock" class="result-block" hidden>
+            <h2>중첩규제구역 감지</h2>
+            <p class="helper-text">용도지역 점수와 별도로 규제 리스크 감점 및 보류 판정을 반영합니다.</p>
+            <dl id="overlayRegulationList" class="fact-list compact"></dl>
+          </section>
+
+          <section class="result-block result-overview-block">
+            <h2>분석 요약</h2>
+            <dl id="siteFacts" class="fact-list"></dl>
+          </section>
+
+          <section id="selectedParcelZoningBlock" class="result-block" hidden>
+            <h2>추가필지 용도지역</h2>
+            <p class="helper-text">기준 필지와 같은 용도지역 점수표를 적용하며, 선택된 필지 중 가장 낮은 점수를 통합 인허가 점수로 반영합니다.</p>
+            <div id="selectedParcelZoningList" class="selected-zoning-list"></div>
+          </section>
+
+          <div class="download-row">
+            <button type="button" id="downloadMarkdown">리포트</button>
+          </div>
+
+          <div id="policyReferenceBlock" class="result-block" hidden>
+            <h2>정책 기준자료 입력</h2>
+            <p class="helper-text">CSV에 해당 행정구역 자료가 없을 때만 저장합니다. 저장 즉시 정책입지 점수와 총점을 다시 계산합니다.</p>
+            <form id="policyReferenceForm" class="policy-form">
+              <label>
+                시도
+                <input id="policySido" type="text" required />
+              </label>
+              <label>
+                시군구
+                <input id="policySigungu" type="text" required />
+              </label>
+              <label>
+                지역낙후도 지수
+                <input id="policyLaggingIndex" type="number" step="0.01" required />
+              </label>
+              <label>
+                지역낙후도 순위
+                <input id="policyLaggingRank" type="number" step="1" min="1" />
+              </label>
+              <label>
+                인구밀도
+                <input id="policyPopulationDensity" type="number" step="0.1" required />
+              </label>
+              <label>
+                재정자립도(%)
+                <input id="policyFiscalIndependenceRate" type="number" step="0.1" required />
+              </label>
+              <label>
+                기준연도
+                <input id="policyUpdatedYear" type="number" step="1" placeholder="2026" required />
+              </label>
+              <label class="wide">
+                출처 메모
+                <input id="policySourceNote" type="text" placeholder="자료 출처 또는 메모" />
+              </label>
+              <button type="submit" class="primary-button">정책자료 저장</button>
+            </form>
+          </div>
+
+          <div id="debugBlock" class="result-block" hidden>
+            <h2>VWorld Raw Response</h2>
+            <details>
+              <summary>디버그 응답 보기</summary>
+              <pre id="debugRaw" class="debug-raw"></pre>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      {{ disclaimer }}
+    </footer>
+
+    <script src="/static/app.js?v={{ app_version }}"></script>
+    <script src="/static/parcel-selection-fix.js?v={{ app_version }}-parcel-click-2"></script>
+  </body>
+</html>

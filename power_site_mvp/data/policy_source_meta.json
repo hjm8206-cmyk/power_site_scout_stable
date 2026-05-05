@@ -1,0 +1,7 @@
+{
+  "population_density_source": "샘플 수동자료 - KOSIS/한국도시통계 갱신 필요",
+  "fiscal_independence_source": "샘플 수동자료 - 지방재정365 재정자립도(최종) 갱신 필요",
+  "lagging_index_source": "샘플 수동자료 - KDI 지역낙후도지수 갱신 필요",
+  "updated_at": "2026-05-03T00:57:39.191117+00:00",
+  "notes": "KOSIS, 지방재정365, KDI 자동수집 스크립트 실패 시 raw_policy_sources 수동 CSV를 병합합니다."
+}
