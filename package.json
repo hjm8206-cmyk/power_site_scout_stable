@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "build": "python3 scripts/bootstrap_stable.py"
+    "build": "node scripts/run_bootstrap.mjs"
   },
   "dependencies": {}
 }
