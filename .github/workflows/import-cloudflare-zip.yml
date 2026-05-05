@@ -100,7 +100,7 @@ jobs:
                   path.unlink()
           PY
 
-      - name: Restore root deploy files
+      - name: Restore deploy files
         run: |
           cat > package.json <<'EOF'
           {
@@ -116,7 +116,7 @@ jobs:
           mkdir -p scripts
           cat > scripts/build-check.mjs <<'EOF'
           import { execFileSync } from 'node:child_process';
-          import { existsSync } from 'node:fs';
+          import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 
           const requiredFiles = [
             'api/index.py',
@@ -137,7 +137,43 @@ jobs:
           }
 
           execFileSync(process.execPath, ['--check', 'power_site_mvp/static/app.js'], { stdio: 'inherit' });
+          mkdirSync('public', { recursive: true });
+          writeFileSync(
+            'public/index.html',
+            '<!doctype html><meta charset="utf-8"><title>PowerSite Scout OS</title><p>PowerSite Scout OS</p>\n'
+          );
           console.log('PowerSite Scout OS root build check passed.');
+          EOF
+
+          mkdir -p power_site_mvp/scripts
+          cat > power_site_mvp/scripts/build-check.mjs <<'EOF'
+          import { execFileSync } from "node:child_process";
+          import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+
+          const requiredFiles = [
+            "api/index.py",
+            "app/main.py",
+            "templates/index.html",
+            "templates/login.html",
+            "static/app.js",
+            "static/style.css",
+            "requirements.txt",
+            "vercel.json"
+          ];
+
+          for (const file of requiredFiles) {
+            if (!existsSync(file)) {
+              throw new Error(`Missing required deploy file: ${file}`);
+            }
+          }
+
+          execFileSync(process.execPath, ["--check", "static/app.js"], { stdio: "inherit" });
+          mkdirSync("public", { recursive: true });
+          writeFileSync(
+            "public/index.html",
+            '<!doctype html><meta charset="utf-8"><title>PowerSite Scout OS</title><p>PowerSite Scout OS</p>\n'
+          );
+          console.log("PowerSite Scout OS build check passed.");
           EOF
 
       - name: Commit imported stable package
