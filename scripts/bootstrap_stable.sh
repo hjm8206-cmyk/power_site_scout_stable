@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ZIP_URL="${POWERSITE_STABLE_ZIP_URL:-https://dat-ringtones-heath-shipments.trycloudflare.com/static/power_site_scout_stable_vercel_ready.zip}"
+ZIP_URL="${POWERSITE_STABLE_ZIP_URL:-https://dat-ringtones-heath-shipments.trycloudflare.com/static/power_site_scout_stable_vercel_ready.zip?v=202605060401}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
