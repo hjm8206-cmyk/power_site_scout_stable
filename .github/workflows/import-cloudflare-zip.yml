@@ -96,7 +96,6 @@ jobs:
           cat > vercel.json <<'EOF'
           {
             "version": 2,
-            "buildCommand": "npm run build",
             "builds": [
               {
                 "src": "api/index.py",
@@ -106,7 +105,7 @@ jobs:
             "routes": [
               {
                 "src": "/(.*)",
-                "dest": "api/index.py"
+                "dest": "/api/index.py"
               }
             ]
           }
@@ -157,7 +156,6 @@ jobs:
           cat > power_site_mvp/vercel.json <<'EOF'
           {
             "version": 2,
-            "buildCommand": "npm run build",
             "builds": [
               {
                 "src": "api/index.py",
@@ -167,7 +165,7 @@ jobs:
             "routes": [
               {
                 "src": "/(.*)",
-                "dest": "api/index.py"
+                "dest": "/api/index.py"
               }
             ]
           }
