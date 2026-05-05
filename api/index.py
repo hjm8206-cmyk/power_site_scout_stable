@@ -9,6 +9,13 @@ from starlette.responses import RedirectResponse
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 APP_DIR = ROOT_DIR / "power_site_mvp"
+DEFAULT_PUBLIC_ORIGIN = "https://power-site-scout-stable.vercel.app"
+
+# Keep VWorld/Kakao domain-sensitive calls on the single production origin even
+# when Vercel exposes preview/branch/project URLs. These are public origins, not
+# secrets; API keys still come only from Vercel environment variables.
+os.environ.setdefault("APP_PUBLIC_URL", DEFAULT_PUBLIC_ORIGIN)
+os.environ.setdefault("VWORLD_DOMAIN", DEFAULT_PUBLIC_ORIGIN)
 
 for path in (ROOT_DIR, APP_DIR):
     if str(path) not in sys.path:
@@ -44,7 +51,7 @@ def _canonical_origin() -> str:
         value = os.getenv(key, "").strip()
         if value:
             return _origin_url(value)
-    return ""
+    return DEFAULT_PUBLIC_ORIGIN
 
 
 def _header(scope: dict, name: bytes) -> str:
