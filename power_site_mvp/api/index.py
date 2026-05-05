@@ -9,7 +9,8 @@ for path in (ROOT_DIR, REPO_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-try:
-    from app.main import app
-except ModuleNotFoundError:
-    from power_site_mvp.app.main import app
+from app.main import app as fastapi_app
+
+app = fastapi_app
+application = app
+handler = app
