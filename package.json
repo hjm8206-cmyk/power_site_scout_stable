@@ -1,9 +1,9 @@
 {
-  "name": "power-site-scout-stable-bootstrap",
+  "name": "power-site-scout-stable",
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "build": "node scripts/run_bootstrap.mjs"
+    "build": "node scripts/build-check.mjs"
   },
   "dependencies": {}
 }
