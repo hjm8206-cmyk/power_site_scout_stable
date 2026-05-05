@@ -20,11 +20,9 @@ for (const file of requiredFiles) {
 }
 
 execFileSync(process.execPath, ['--check', 'power_site_mvp/static/app.js'], { stdio: 'inherit' });
-
 mkdirSync('public', { recursive: true });
 writeFileSync(
   'public/index.html',
   '<!doctype html><meta charset="utf-8"><title>PowerSite Scout OS</title><p>PowerSite Scout OS</p>\n'
 );
-
 console.log('PowerSite Scout OS root build check passed.');
