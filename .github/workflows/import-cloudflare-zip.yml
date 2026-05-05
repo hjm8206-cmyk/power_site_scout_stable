@@ -12,15 +12,6 @@ jobs:
   import-stable-package:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip imported snapshot commits
-        env:
-          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: |
-          if [[ "$HEAD_COMMIT_MESSAGE" == *"chore: import stable app snapshot"* ]]; then
-            echo "Snapshot commit detected; no import needed."
-            exit 0
-          fi
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -100,8 +91,26 @@ jobs:
                   path.unlink()
           PY
 
-      - name: Restore deploy files
+      - name: Restore Vercel deploy files
         run: |
+          cat > vercel.json <<'EOF'
+          {
+            "version": 2,
+            "buildCommand": "npm run build",
+            "builds": [
+              {
+                "src": "api/index.py",
+                "use": "@vercel/python"
+              }
+            ],
+            "routes": [
+              {
+                "src": "/(.*)",
+                "dest": "api/index.py"
+              }
+            ]
+          }
+          EOF
           cat > package.json <<'EOF'
           {
             "name": "power-site-scout-stable",
@@ -145,6 +154,34 @@ jobs:
           console.log('PowerSite Scout OS root build check passed.');
           EOF
 
+          cat > power_site_mvp/vercel.json <<'EOF'
+          {
+            "version": 2,
+            "buildCommand": "npm run build",
+            "builds": [
+              {
+                "src": "api/index.py",
+                "use": "@vercel/python"
+              }
+            ],
+            "routes": [
+              {
+                "src": "/(.*)",
+                "dest": "api/index.py"
+              }
+            ]
+          }
+          EOF
+          cat > power_site_mvp/package.json <<'EOF'
+          {
+            "name": "powersite-scout-os",
+            "private": true,
+            "version": "0.1.0",
+            "scripts": {
+              "build": "node scripts/build-check.mjs"
+            }
+          }
+          EOF
           mkdir -p power_site_mvp/scripts
           cat > power_site_mvp/scripts/build-check.mjs <<'EOF'
           import { execFileSync } from "node:child_process";
