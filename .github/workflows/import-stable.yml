@@ -1,5 +1,7 @@
 name: Import tunnel-tested stable build
 
+# trigger: 2026-05-06 stable import
+
 on:
   workflow_dispatch:
   push:
