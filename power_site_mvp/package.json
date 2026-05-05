@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "python scripts/bootstrap_stable.py && python -m compileall app"
+    "build": "bash scripts/bootstrap_stable.sh"
   },
   "dependencies": {}
 }
